@@ -1,0 +1,115 @@
+{
+  "name": "OPT25D_OI_02_03",
+  "start": "2021-01-01T00:00:00+00:00",
+  "end": "2026-09-12T01:00:00+00:00",
+  "sources": {
+    "skew_1m": {
+      "topic": "glassnode|derivatives/options_25delta_skew_1_month?a=BTC&e=deribit&i=1h",
+      "column": "v",
+      "availability_lag_minutes": 0
+    },
+    "oi_bin_gn": {
+      "topic": "glassnode|derivatives/futures_open_interest_sum?a=BTC&e=binance&i=1h",
+      "column": "v",
+      "availability_lag_minutes": 0
+    }
+  },
+  "price": {
+    "topic": "bybit-linear|candle?symbol=BTCUSDT&interval=1m",
+    "column": "close"
+  },
+  "factor": {
+    "steps": [
+      {
+        "name": "skew_z",
+        "op": "zscore",
+        "input": "skew_1m",
+        "window": 720
+      },
+      {
+        "name": "negative_skew",
+        "op": "negate",
+        "input": "skew_z"
+      },
+      {
+        "name": "oi_log",
+        "op": "log",
+        "input": "oi_bin_gn"
+      },
+      {
+        "name": "oi_rank",
+        "op": "percentile_rank",
+        "input": "oi_log",
+        "window": 720
+      },
+      {
+        "name": "alpha_factor",
+        "op": "multiply",
+        "inputs": [
+          "negative_skew",
+          "oi_rank"
+        ]
+      }
+    ],
+    "output": "alpha_factor"
+  },
+  "grid": {
+    "model": [
+      "percentilerank_meannorm"
+    ],
+    "window": [
+      100,
+      120,
+      140,
+      160,
+      180,
+      200,
+      220
+    ],
+    "threshold_1": [
+      -1.0,
+      -0.8,
+      -0.6,
+      -0.4,
+      -0.2,
+      0.0,
+      0.2,
+      0.4,
+      0.6,
+      0.8,
+      1.0,
+      1.2,
+      1.4
+    ],
+    "threshold_2": [
+      -1.5,
+      -1.3,
+      -1.1,
+      -0.9,
+      -0.7,
+      -0.5,
+      -0.3,
+      -0.1,
+      0.1,
+      0.3,
+      0.5,
+      0.7,
+      0.9
+    ]
+  },
+  "execution": {
+    "fee_bps": 3.5000000000000004,
+    "price_shift_minutes": 70
+  },
+  "baseline_parameters": {
+    "window": 160,
+    "threshold_1": 0.2,
+    "threshold_2": -0.3,
+    "model": "percentilerank_meannorm"
+  },
+  "notes": [
+    "Original fixed parameters are supplied as a descriptive baseline. Defaults add warm-up, training eligibility, connected-plateau selection, execution-time purging and a three-month holdout; WF results therefore differ from the previous script.",
+    "Verify actual provider publication lags. Zero configured lag is an assumption, not point-in-time data certification.",
+    "KNOWN NON-REPRODUCTION: the previous current-input reconstruction had 412 position mismatches against the original HTML; the raw-factor discrepancy and original percentilerank_meannorm implementation remain unresolved. This preset runs the documented reconstructed formula and must not be labelled exact reproduction."
+  ]
+}

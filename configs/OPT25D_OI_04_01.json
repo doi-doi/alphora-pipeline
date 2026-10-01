@@ -1,0 +1,122 @@
+{
+  "name": "OPT25D_OI_04_01",
+  "start": "2021-01-01T00:00:00+00:00",
+  "end": "2026-09-12T01:00:00+00:00",
+  "sources": {
+    "skew_1w": {
+      "topic": "glassnode|derivatives/options_25delta_skew_1_week?a=BTC&e=deribit&i=1h",
+      "column": "v",
+      "availability_lag_minutes": 0
+    },
+    "oi_crypto_rel": {
+      "topic": "glassnode|derivatives/futures_open_interest_crypto_margin_relative?a=BTC&i=1h",
+      "column": "v",
+      "availability_lag_minutes": 0
+    }
+  },
+  "price": {
+    "topic": "bybit-linear|candle?symbol=BTCUSDT&interval=1m",
+    "column": "close"
+  },
+  "factor": {
+    "steps": [
+      {
+        "name": "skew_z",
+        "op": "zscore",
+        "input": "skew_1w",
+        "window": 168
+      },
+      {
+        "name": "negative_skew",
+        "op": "negate",
+        "input": "skew_z"
+      },
+      {
+        "name": "oi_log",
+        "op": "log",
+        "input": "oi_crypto_rel"
+      },
+      {
+        "name": "oi_rank",
+        "op": "percentile_rank",
+        "input": "oi_log",
+        "window": 168
+      },
+      {
+        "name": "denominator",
+        "op": "add",
+        "inputs": [
+          "oi_rank",
+          0.25
+        ]
+      },
+      {
+        "name": "alpha_factor",
+        "op": "divide",
+        "inputs": [
+          "negative_skew",
+          "denominator"
+        ]
+      }
+    ],
+    "output": "alpha_factor"
+  },
+  "grid": {
+    "model": [
+      "zscore"
+    ],
+    "window": [
+      110,
+      130,
+      150,
+      170,
+      190,
+      210,
+      230
+    ],
+    "threshold_1": [
+      -0.4,
+      -0.2,
+      0.0,
+      0.2,
+      0.4,
+      0.6,
+      0.8,
+      1.0,
+      1.2,
+      1.4,
+      1.6,
+      1.8,
+      2.0
+    ],
+    "threshold_2": [
+      -2.2,
+      -2.0,
+      -1.8,
+      -1.6,
+      -1.4,
+      -1.2,
+      -1.0,
+      -0.8,
+      -0.6,
+      -0.4,
+      -0.2,
+      0.0,
+      0.2
+    ]
+  },
+  "execution": {
+    "fee_bps": 3.5000000000000004,
+    "price_shift_minutes": 70
+  },
+  "baseline_parameters": {
+    "window": 170,
+    "threshold_1": 0.8,
+    "threshold_2": -1.0,
+    "model": "zscore"
+  },
+  "notes": [
+    "Original fixed parameters are supplied as a descriptive baseline. Defaults add warm-up, training eligibility, connected-plateau selection, execution-time purging and a three-month holdout; WF results therefore differ from the previous script.",
+    "Verify actual provider publication lags. Zero configured lag is an assumption, not point-in-time data certification."
+  ]
+}

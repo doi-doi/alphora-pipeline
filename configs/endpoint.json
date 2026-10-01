@@ -1,0 +1,30 @@
+{
+  "name": "single_endpoint",
+  "start": "2021-01-01T00:00:00Z",
+  "end": "2026-09-12T01:00:00Z",
+  "frequency": "1h",
+  "warmup_bars": 5000,
+  "sources": {
+    "endpoint": {
+      "topic": "glassnode|derivatives/options_25delta_skew_1_week?a=BTC&e=deribit&i=1h",
+      "column": "v",
+      "timestamp_column": "start_time",
+      "timestamp_unit": "ms",
+      "availability_lag_minutes": 0
+    }
+  },
+  "price": {"topic": "bybit-linear|candle?symbol=BTCUSDT&interval=1m", "column": "close"},
+  "factor": {"steps": [], "output": "endpoint"},
+  "grid": {
+    "model": ["zscore", "ezscorev1"],
+    "window": [60, 100, 140, 180],
+    "threshold_1": [0.4, 0.8, 1.2, 1.6, 2.0],
+    "threshold_2": [-2.0, -1.6, -1.2, -0.8, -0.4]
+  },
+  "cleaning": {"duplicates": "error", "missing": "error", "max_missing_fraction": 0.0},
+  "execution": {"fee_bps": 3.5, "slippage_bps": 0, "price_shift_minutes": 70, "price_sampling": "bar_last", "price_frequency": "1min"},
+  "signal": {"logic": "trend", "side": "both", "overlap": "short_priority"},
+  "optimization": {"selection": "connected_plateau", "min_valid_bars": 168, "min_trade_events": 5},
+  "walk_forward": {"train_months": 6, "test_months": 3, "holdout_months": 3, "embargo_bars": 0},
+  "notes": ["This is an endpoint-only template, not the original two-input options/OI formula. Set the actual provider publication lag; zero lag is an assumption to review."]
+}
